@@ -141,6 +141,40 @@ void rotate_cube_xyz( float roll, float pitch, float yaw){
 }
 
 
+void rotate_cube_quaternion(float a, float b, float c, float d)
+{
+  uint8_t i;
+
+  float DistanceCamera = 300;
+  float DistanceScreen = 550;
+
+  float x_x = a*a + b*b - c*c - d*d;
+  float x_y = 2*b*c + 2*a*d;
+  float x_z = 2*b*d - 2*a*c;
+  float y_x = 2*b*c - 2*a*d;
+  float y_y = a*a - b*b + c*c - d*d;
+  float y_z = 2*c*d + 2*a*b;
+  float z_x = 2*b*d + 2*a*c;
+  float z_y = 2*c*d - 2*a*b;
+  float z_z = a*a - b*b - c*c + d*d;
+
+  for (i = 0; i < 8; i++){
+    float x = x_x * cubef[i].x
+            + x_y * cubef[i].y
+            + x_z * cubef[i].z;
+    float y = y_x * cubef[i].x
+            + y_y * cubef[i].y
+            + y_z * cubef[i].z;
+    float z = z_x * cubef[i].x
+            + z_y * cubef[i].y
+            + z_z * cubef[i].z;
+
+    cubef2[i].x = (x * DistanceCamera) / (z + DistanceCamera + DistanceScreen) + (ws>>1);
+    cubef2[i].y = (y * DistanceCamera) / (z + DistanceCamera + DistanceScreen) + (hs>>1);
+    cubef2[i].z = z;
+  }
+}
+
 void setup(void){ 
   M5.begin();
   Wire.begin();
@@ -257,7 +291,8 @@ void loop(void)
   roll  = filter->getRoll()-offset_roll;
   yaw   = filter->getYaw()-offset_yaw;
 
-  rotate_cube_xyz(roll,pitch,yaw);
+  //rotate_cube_xyz(roll,pitch,yaw);
+  rotate_cube_quaternion(filter->q0, filter->q1, filter->q2, filter->q3);
 
   //描写する面の順番に並び替え
   int ss[6]={0,1,2,3,4,5};
