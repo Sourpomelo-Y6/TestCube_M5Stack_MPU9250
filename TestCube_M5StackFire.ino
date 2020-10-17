@@ -251,7 +251,7 @@ void loop(void)
   //count = (count + 1) & 3;
   //if (count == 0)
   //if (calc_time >= 9)
-  if (getIMUData())
+  if (getIMUData(true))
   {  
     M5.update();
     if(M5.BtnA.isPressed()){
@@ -359,7 +359,7 @@ void loop(void)
   sprite[flip].pushSprite(&lcd, 0, 0);
 }
 
-bool getIMUData()
+bool getIMUData(bool calc_flag)
 {
   // If intPin goes high, all data registers have new data
   // On interrupt, check if data ready interrupt
@@ -415,17 +415,19 @@ bool getIMUData()
 //      IMU.az - calb_accZ
 //    );
 
-    filter->MadgwickAHRSupdate(
-      PI/180.0F*(IMU.gx - calb_gyroX), 
-      PI/180.0F*(IMU.gy - calb_gyroY), 
-      PI/180.0F*(IMU.gz - calb_gyroZ),
-      IMU.ax - calb_accX, 
-      IMU.ay - calb_accY, 
-      IMU.az - calb_accZ,
-      (2.0*IMU.my-magY_max-magY_min)/(magY_max-magY_min),
-      (2.0*IMU.mx-magX_max-magX_min)/(magX_max-magX_min),
-      -(2.0*IMU.mz-magZ_max-magZ_min)/(magZ_max-magZ_min)
-    );
+    if(calc_flag){
+      filter->MadgwickAHRSupdate(
+        PI/180.0F*(IMU.gx - calb_gyroX), 
+        PI/180.0F*(IMU.gy - calb_gyroY), 
+        PI/180.0F*(IMU.gz - calb_gyroZ),
+        IMU.ax - calb_accX, 
+        IMU.ay - calb_accY, 
+        IMU.az - calb_accZ,
+        (2.0*IMU.my-magY_max-magY_min)/(magY_max-magY_min),
+        (2.0*IMU.mx-magX_max-magX_min)/(magX_max-magX_min),
+        -(2.0*IMU.mz-magZ_max-magZ_min)/(magZ_max-magZ_min)
+      );
+    }
   
     //pitch = filter->getPitch()*180.0F/PI;
     //roll = filter->getRoll()*180.0F/PI;
@@ -456,7 +458,7 @@ void getCalibrationVal()
 
     for(int i = 0 ; i < CalbNum ; i++){
 
-      if(getIMUData()){
+      if(getIMUData(false)){
         sum_accX += IMU.ax;
         sum_accY += IMU.ay;
         sum_accZ += IMU.az;
@@ -522,7 +524,7 @@ void getMagCalibrationVal()
     
   for(int i = 0 ; i < CalbNum ; i++){
 
-      if(getIMUData()){
+      if(getIMUData(false)){
 
         if(magX_min > IMU.mx){
           magX_min = IMU.mx;
