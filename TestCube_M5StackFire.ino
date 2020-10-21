@@ -1,5 +1,8 @@
 #include <M5Stack.h>
 
+#include "gimp_image.h"
+#include "surface00.h"
+
 #include "utility/MPU9250.h"
 MPU9250 IMU;
 
@@ -17,11 +20,12 @@ Madgwick *filter = new Madgwick();
 
 static LGFX lcd;
 static LGFX_Sprite sprite[2];
+static LGFX_Sprite sprite_surface[6];
 
 //#pragma GCC optimize ("O3")
 struct point3df{ float x, y, z;};
 struct surface{ uint8_t p[4]; int16_t z;};
-#define U  70         // size of cube
+#define U  135         // size of cube
  
 struct point3df cubef[8] ={ // cube edge length is 2*U
   { -U, -U,  U },
@@ -229,10 +233,14 @@ void setup(void){
   //ws = lcd.width();
   //hs = lcd.height();
   ws = 160;
-  hs = 80;
+  hs = 160;
 
   sprite[0].createSprite(ws,hs);
   sprite[1].createSprite(ws,hs);
+
+  sprite_surface[0].createSprite(surface00.width ,surface00.height);
+  sprite_surface[0].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
+  
   lcd.startWrite();
   lcd.fillScreen(TFT_DARKGREY);
 }
@@ -295,32 +303,32 @@ void loop(void)
   rotate_cube_quaternion(filter->q0, filter->q1, filter->q2, filter->q3);
 
   //描写する面の順番に並び替え
-  int ss[6]={0,1,2,3,4,5};
-  float sf[6]={0};
-  for (int i = 0; i < 6; i++)
-  {
-    float wz = 0;
-    for(int j=0;j<4;j++){
-      wz += cubef2[s[i].p[j]].z;
-    }
-    sf[i] = wz;
-  }
-  //交換ソート
-  for (int j = 5; j > 0; j--){
-    for (int i = 0; i < j; i++)
-    {
-        if(sf[i] < sf[i+1])
-        {
-          float work = sf[i];
-          sf[i] = sf[i+1];
-          sf[i+1] = work;
-          
-          int iw = ss[i];
-          ss[i] = ss[i+1];
-          ss[i+1] = iw;
-        }
-    }
-  }
+//  int ss[6]={0,1,2,3,4,5};
+//  float sf[6]={0};
+//  for (int i = 0; i < 6; i++)
+//  {
+//    float wz = 0;
+//    for(int j=0;j<4;j++){
+//      wz += cubef2[s[i].p[j]].z;
+//    }
+//    sf[i] = wz;
+//  }
+//  //交換ソート
+//  for (int j = 5; j > 0; j--){
+//    for (int i = 0; i < j; i++)
+//    {
+//        if(sf[i] < sf[i+1])
+//        {
+//          float work = sf[i];
+//          sf[i] = sf[i+1];
+//          sf[i+1] = work;
+//          
+//          int iw = ss[i];
+//          ss[i] = ss[i+1];
+//          ss[i+1] = iw;
+//        }
+//    }
+//  }
 
   flip = !flip;
   sprite[flip].clear();
@@ -330,24 +338,31 @@ void loop(void)
     //Serial.printf("%d,%f,%f,\r\n",i,cubef2[i].x, cubef2[i].y); 
   }
 
-  for (int i = 0; i < 6; i++)
-  {
-    int ii = ss[i];
-    
-    sprite[flip].setColor( lcd.color565(((( ii + 1) &  1)      * 255),
-                                  ((((ii + 1) >> 1) & 1) * 255),
-                                  ((((ii + 1) >> 2) & 1) * 255)
-                   )             );
-    sprite[flip].fillTriangle(    cubef2[s[ii].p[0]].x, cubef2[s[ii].p[0]].y,
-                            cubef2[s[ii].p[1]].x, cubef2[s[ii].p[1]].y,
-                            cubef2[s[ii].p[2]].x, cubef2[s[ii].p[2]].y);
-    sprite[flip].fillTriangle(    cubef2[s[ii].p[2]].x, cubef2[s[ii].p[2]].y,
-                            cubef2[s[ii].p[3]].x, cubef2[s[ii].p[3]].y,
-                            cubef2[s[ii].p[0]].x, cubef2[s[ii].p[0]].y);
-  }
+//  for (int i = 0; i < 6; i++)
+//  {
+//    int ii = ss[i];
+//    
+//    sprite[flip].setColor( lcd.color565(((( ii + 1) &  1)      * 255),
+//                                  ((((ii + 1) >> 1) & 1) * 255),
+//                                  ((((ii + 1) >> 2) & 1) * 255)
+//                   )             );
+//    sprite[flip].fillTriangle(    cubef2[s[ii].p[0]].x, cubef2[s[ii].p[0]].y,
+//                            cubef2[s[ii].p[1]].x, cubef2[s[ii].p[1]].y,
+//                            cubef2[s[ii].p[2]].x, cubef2[s[ii].p[2]].y);
+//    sprite[flip].fillTriangle(    cubef2[s[ii].p[2]].x, cubef2[s[ii].p[2]].y,
+//                            cubef2[s[ii].p[3]].x, cubef2[s[ii].p[3]].y,
+//                            cubef2[s[ii].p[0]].x, cubef2[s[ii].p[0]].y);
+//  }
   
   int show_time = millis() - pre_show_time;
   pre_show_time = millis();
+  sprite[flip].setCursor(0, 10);
+  sprite[flip].printf("%+3.2f",pitch);
+  sprite[flip].setCursor(0, 20);
+  sprite[flip].printf("%+3.2f",roll);
+  sprite[flip].setCursor(0, 30);
+  sprite[flip].printf("%+3.2f",yaw);
+  
   sprite[flip].setCursor(0, 50);
   sprite[flip].printf("%5d",show_time);
 
@@ -357,6 +372,27 @@ void loop(void)
   }
   
   sprite[flip].pushSprite(&lcd, 0, 0);
+
+  
+  float x_zoom = (90-abs(pitch*180/PI))/90;
+  float y_zoom = (90-abs(roll*180/PI))/90;
+
+
+  {
+    int ii = 3; //front
+    
+    float surface_center_x = 0.0;
+    float surface_center_y = 0.0;
+    
+    for(int i=0 ; i<4 ; i++){
+      surface_center_x += cubef2[s[ii].p[i]].x;
+      surface_center_y += cubef2[s[ii].p[i]].y;
+      //Serial.printf("%f,%f,\r\n",cubef2[s[ii].p[i]].x, cubef2[s[ii].p[i]].y); 
+    }
+    
+    sprite_surface[0].pushRotateZoom(&lcd, (int)(surface_center_x/4.0), (int)(surface_center_y/4.0), -yaw*180/PI, x_zoom, y_zoom);
+  }
+
 }
 
 bool getIMUData(bool calc_flag)
