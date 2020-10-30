@@ -1,3 +1,8 @@
+#include <Eigen30.h>
+#include <Eigen/SVD>
+#include <Eigen/QR>
+#include <Eigen/LU>
+using namespace Eigen;
 #include <M5Stack.h>
 
 #include "gimp_image.h"
@@ -240,6 +245,14 @@ void setup(void){
 
   sprite_surface[0].createSprite(surface00.width ,surface00.height);
   sprite_surface[0].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
+  sprite_surface[0].setColor(lcd.color565(0,0,0));
+  sprite_surface[0].fillTriangle(0, 0, surface00.width-1, surface00.height-1, 0, surface00.height-1);
+
+  sprite_surface[1].createSprite(surface00.width ,surface00.height);
+  sprite_surface[1].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
+  sprite_surface[1].setColor(lcd.color565(0,0,0));
+  sprite_surface[1].fillTriangle(0, 0, surface00.width-1, 0, surface00.width-1, surface00.height-1);
+
   
   lcd.startWrite();
   lcd.fillScreen(TFT_DARKGREY);
@@ -373,26 +386,202 @@ void loop(void)
   
   sprite[flip].pushSprite(&lcd, 0, 0);
 
-  
-  float x_zoom = (90-abs(pitch*180/PI))/90;
-  float y_zoom = (90-abs(roll*180/PI))/90;
+  //float x_zoom = (90-abs(pitch*180/PI))/90;
+  //float y_zoom = (90-abs(roll*180/PI))/90;
 
 
   {
     int ii = 3; //front
-    
-    float surface_center_x = 0.0;
-    float surface_center_y = 0.0;
-    
-    for(int i=0 ; i<4 ; i++){
-      surface_center_x += cubef2[s[ii].p[i]].x;
-      surface_center_y += cubef2[s[ii].p[i]].y;
-      //Serial.printf("%f,%f,\r\n",cubef2[s[ii].p[i]].x, cubef2[s[ii].p[i]].y); 
-    }
-    
-    sprite_surface[0].pushRotateZoom(&lcd, (int)(surface_center_x/4.0), (int)(surface_center_y/4.0), -yaw*180/PI, x_zoom, y_zoom);
-  }
 
+    Eigen::MatrixXf tp(3,3);
+    tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
+          cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
+            1,  1,  1;
+  
+    Eigen::MatrixXf fp(3,3);
+    fp << 0, surface00.width, surface00.width,
+          0,   0, surface00.height,
+          1,   1,   1;
+  
+    Eigen::MatrixXf H(3,3);
+
+    Haffine_from_points(fp,tp,H);
+
+    float matrix[6]={
+      H(0,0),H(0,1),H(0,2),
+      H(0,0),H(1,1),H(1,2)
+    };
+    //float surface_center_x = 0.0;
+    //float surface_center_y = 0.0;
+    
+//    for(int i=0 ; i<4 ; i++){
+//      surface_center_x += cubef2[s[ii].p[i]].x;
+//      surface_center_y += cubef2[s[ii].p[i]].y;
+//      //Serial.printf("%f,%f,\r\n",cubef2[s[ii].p[i]].x, cubef2[s[ii].p[i]].y); 
+//    }
+    lcd.setCursor(0, 10);
+    print_mtxf(H);
+    sprite_surface[0].pushAffine(&lcd, matrix, 0);
+    //sprite_surface[0].pushRotateZoom(&lcd, (int)(surface_center_x/4.0), (int)(surface_center_y/4.0), -yaw*180/PI, x_zoom, y_zoom);
+  }
+}
+
+bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, Eigen::MatrixXf& H)
+{
+  //とりあえず、3x3行列のみを対象にする
+  //if fp.shape != tp.shape:
+  //  raise RuntimeError('number of points do not match')
+  
+  //# 点を調整する
+  //# 開始点
+  
+  //m = mean(fp[:2], axis=1)
+  Eigen::MatrixXf wfp = fp(seq(0, last - 1), all);
+  Eigen::VectorXf m = wfp.rowwise().mean();
+  
+  //std::cout << "wfp:" << std::endl;
+  //print_mtxf(wfp);
+  //std::cout << "m:" << std::endl;
+  //print_mtxf(m);
+  
+  //maxstd = max(std(fp[:2], axis=1)) + 1e-9
+  Eigen::VectorXf std_m = (wfp.colwise() - m).array().pow(2).rowwise().mean();
+  //print_mtxf(std_m);
+  double maxstd = sqrt(std_m.maxCoeff()) + 1e-9;
+  //lcd.setCursor(0, 30);
+  //lcd.print(maxstd);
+  
+  //C1 = diag([1/maxstd, 1/maxstd, 1])
+  //C1[0][2] = -m[0]/maxstd
+  //C1[1][2] = -m[1]/maxstd
+  Eigen::MatrixXf C1(3, 3);
+  C1 << 1 / maxstd, 0, -m(0) / maxstd,
+      0, 1 / maxstd, -m(1) / maxstd,
+      0, 0, 1;
+  
+  //fp_cond = dot(C1,fp)
+  Eigen::MatrixXf fp_cond = C1 * fp;
+  
+  //lcd.setCursor(0, 30);
+  //print_mtxf(fp_cond);
+  
+  //# 対応点
+  //m = mean(tp[:2], axis=1)
+  Eigen::MatrixXf wtp = tp(seq(0, last - 1), all);
+  Eigen::VectorXf m_t = wtp.rowwise().mean();
+  
+  //C2 = C1.copy()  # 2つの点群で、同じ拡大率を用いる
+  //C2[0][2] = -m[0]/maxstd
+  //C2[1][2] = -m[1]/maxstd
+  Eigen::MatrixXf C2 = C1;
+  C2(0, 2) = -m_t(0) / maxstd;
+  C2(1, 2) = -m_t(1) / maxstd;
+  
+  //std::cout << "C1:" << std::endl;
+  //print_mtxf(C1);
+  //std::cout << "C2:" << std::endl;
+  //print_mtxf(C2);
+  
+  //tp_cond = dot(C2,tp)
+  Eigen::MatrixXf tp_cond = C2 * tp;
+  
+  Eigen::MatrixXf A(4, 3);
+  A << fp_cond(seq(0, last - 1), all),
+      tp_cond(seq(0, last - 1), all);
+  
+  //std::cout << "A:" <<std::endl;
+  //print_mtxf(A);
+  //print_mtxf(A.transpose());
+  //U,S,V = linalg.svd(A.T)
+  BDCSVD<MatrixXf> svd(A.transpose(), ComputeFullU | ComputeFullV);
+  
+  //# Hartley-Zisserman (第2版) p.130 に基づき行列B,Cを求める
+  //tmp = V[:2].T
+  Eigen::MatrixXf tmp = svd.matrixV();
+  
+  //std::cout << "tmp:" << std::endl;
+  //print_mtxf(tmp);
+  
+  Eigen::MatrixXf wtmp = tmp(seq(0, 1), all);
+  Eigen::MatrixXf w2tmp = wtmp.transpose();
+  
+  //std::cout << "w2tmp:" << std::endl;
+  //print_mtxf(w2tmp);
+  
+  //B = tmp[:2]
+  Eigen::MatrixXf B = -tmp(seq(0, 1), seq(0, 1));
+  //std::cout << "B:" << std::endl;
+  //print_mtxf(B);
+  
+  //C = tmp[2:4]
+  Eigen::MatrixXf C = -tmp(seq(2, 3), seq(0, 1));
+  //std::cout << "C:" << std::endl;
+  //print_mtxf(C);
+  
+  //tmp2 = concatenate((dot(C,linalg.pinv(B)),zeros((2,1))), axis=1)
+  Eigen::MatrixXf w = B.completeOrthogonalDecomposition().pseudoInverse();
+  w = C * w;
+  Eigen::MatrixXf tmp2(2, 3);
+  tmp2 << w(0, 0), w(0, 1), 0,
+      w(1, 0), w(1, 1), 0;
+  
+  
+  //std::cout << "tmp2:" << std::endl;
+  //print_mtxf(tmp2);
+  //H = vstack((tmp2,[0,0,1]))
+  Eigen::MatrixXf w2(1, 3);
+  w2 << 0, 0, 1;
+  Eigen::MatrixXf tH(3, 3);
+  tH << tmp2,
+      w2;
+  
+  //std::cout << "tH:" << std::endl;
+  //print_mtxf(tH);
+  //# 調整を元に戻す
+  //H = dot(linalg.inv(C2),dot(H,C1))
+  tH = tH * C1;
+  H = C2.inverse() * tH;
+  
+  //std::cout << "H:" << std::endl;
+  //print_mtxf(H);
+  //H / H[2,2]
+  H = H / H(2, 2);
+  
+  //print_mtxf(fp_cond);
+  //print_mtxf(tp_cond);
+  //print_mtxf(C1); 
+  //print_mtxf(tmp);
+  //print_mtxf(B); 
+  //print_mtxf(C);
+  //print_mtxf(C2);
+  //print_mtxf(A);
+  //print_mtxf(tmp2);
+  //print_mtxf(tH);
+  //print_mtxf(H);
+  return true;
+}
+
+void print_mtxf(const Eigen::MatrixXf& X)  
+{
+  int i, j, nrow, ncol;
+   
+  nrow = X.rows();
+  ncol = X.cols();
+  
+  lcd.printf("nrow: %d ",nrow);
+  lcd.printf("ncol: %d ",ncol);       
+  lcd.println();
+  
+  for (i=0; i<nrow; i++)
+  {
+    for (j=0; j<ncol; j++)
+    {
+      lcd.print(X(i,j), 6);   // print 6 decimal places
+      lcd.print(", ");
+    }
+    lcd.println();
+  }
+  lcd.println();
 }
 
 bool getIMUData(bool calc_flag)
