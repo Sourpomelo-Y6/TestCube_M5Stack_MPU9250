@@ -24,7 +24,7 @@ Preferences preferences;
 Madgwick *filter = new Madgwick();
 
 static LGFX lcd;
-static LGFX_Sprite sprite[2];
+//static LGFX_Sprite sprite[2];
 static LGFX_Sprite sprite_surface[6];
 
 //#pragma GCC optimize ("O3")
@@ -44,12 +44,12 @@ struct point3df cubef[8] ={ // cube edge length is 2*U
 };
  
 struct surface s[6] = {// define the surfaces
-  { {0, 1, 2, 3}, 0 }, // bottom
-  { {4, 5, 6, 7}, 0 }, // top
-  { {0, 1, 5, 4}, 0 }, // back
-  { {3, 7, 6, 2}, 0 }, // front
-  { {1, 2, 6, 5}, 0 }, // right
-  { {0, 3, 7, 4}, 0 }, // left
+  { {0, 3, 2, 1}, 0 }, // bottom0
+  { {7, 4, 5, 6}, 0 }, // top0
+  { {4, 0, 1, 5}, 0 }, // back0
+  { {3, 7, 6, 2}, 0 }, // front0
+  { {2, 6, 5, 1}, 0 }, // right1
+  { {0, 4, 7, 3}, 0 }, // left1
 };
  
 struct point3df cubef2[8];
@@ -240,8 +240,8 @@ void setup(void){
   ws = 160;
   hs = 160;
 
-  sprite[0].createSprite(ws,hs);
-  sprite[1].createSprite(ws,hs);
+  //sprite[0].createSprite(ws,hs);
+  //sprite[1].createSprite(ws,hs);
 
   sprite_surface[0].createSprite(surface00.width ,surface00.height);
   sprite_surface[0].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
@@ -343,12 +343,12 @@ void loop(void)
   }
 
   flip = !flip;
-  sprite[flip].clear();
-  for (int i = 0; i < 8; i++)
-  {
-    sprite[flip].drawRect( (int)cubef2[i].x-2, (int)cubef2[i].y-2, 4, 4 , 0xF000);
-    //Serial.printf("%d,%f,%f,\r\n",i,cubef2[i].x, cubef2[i].y); 
-  }
+  //sprite[flip].clear();
+//  for (int i = 0; i < 8; i++)
+//  {
+//    sprite[flip].drawRect( (int)cubef2[i].x-2, (int)cubef2[i].y-2, 4, 4 , 0xF000);
+//    //Serial.printf("%d,%f,%f,\r\n",i,cubef2[i].x, cubef2[i].y); 
+//  }
 
 //  for (int i = 0; i < 6; i++)
 //  {
@@ -367,32 +367,12 @@ void loop(void)
 //  }
   
   int show_time = millis() - pre_show_time;
-  pre_show_time = millis();
-  sprite[flip].setCursor(0, 10);
-  sprite[flip].printf("%+3.2f",pitch);
-  sprite[flip].setCursor(0, 20);
-  sprite[flip].printf("%+3.2f",roll);
-  sprite[flip].setCursor(0, 30);
-  sprite[flip].printf("%+3.2f",yaw);
-  
-  sprite[flip].setCursor(0, 50);
-  sprite[flip].printf("%5d",show_time);
-
-  if (calc_time >= 9){
-    sprite[flip].setCursor(0, 60);
-    sprite[flip].printf("%5d",calc_time);
-  }
-  
-  sprite[flip].pushSprite(&lcd, 0, 0);
-
-  //float x_zoom = (90-abs(pitch*180/PI))/90;
-  //float y_zoom = (90-abs(roll*180/PI))/90;
-
-  for (int i = 3; i < 6; i++)
-  {
-    if(ss[i]==3)
+  if(flip){
+    lcd.fillRect( 0, 0, ws, hs   , 0);
+    
+    for (int i = 3; i < 6; i++)
     {
-      int ii = 3; //front
+      int ii = ss[i];
       {
         Eigen::MatrixXf tp(3,3);
         tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
@@ -434,28 +414,11 @@ void loop(void)
         };
         sprite_surface[1].pushAffine(&lcd, matrix, 0);
       }
-
-//      float matrix[6]={
-//        1.0,0.0,0.0,
-//        0.0,1.0,0.0
-//      };
-  
-      //float surface_center_x = 0.0;
-      //float surface_center_y = 0.0;
-      
-  //    for(int i=0 ; i<4 ; i++){
-  //      surface_center_x += cubef2[s[ii].p[i]].x;
-  //      surface_center_y += cubef2[s[ii].p[i]].y;
-  //      //Serial.printf("%f,%f,\r\n",cubef2[s[ii].p[i]].x, cubef2[s[ii].p[i]].y); 
-  //    }
-      //lcd.setCursor(160, 0);
-      //print_mtxf(H);
-      //lcd.printf("(%f,%f,%f)\n",H(0,0),H(0,1),H(0,2));
-      //lcd.printf("(%f,%f,%f)\n",H(1,0),H(1,1),H(1,2));
-      //sprite_surface[0].pushAffine(&lcd, matrix, 0);
-      //sprite_surface[0].pushRotateZoom(&lcd, (int)(surface_center_x/4.0), (int)(surface_center_y/4.0), -yaw*180/PI, x_zoom, y_zoom);
     }
   }
+  lcd.setCursor(160, 50);
+  lcd.printf("%5d",show_time);
+  pre_show_time = millis();
 }
 
 bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, Eigen::MatrixXf& H)
