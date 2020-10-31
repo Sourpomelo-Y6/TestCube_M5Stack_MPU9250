@@ -33,14 +33,14 @@ struct surface{ uint8_t p[4]; int16_t z;};
 #define U  135         // size of cube
  
 struct point3df cubef[8] ={ // cube edge length is 2*U
-  { -U, -U,  U },
-  {  U, -U,  U },
-  {  U, -U, -U },
-  { -U, -U, -U },
-  { -U,  U,  U },
-  {  U,  U,  U },
-  {  U,  U, -U },
-  { -U,  U, -U },
+  { -U, -U,  U },//0
+  {  U, -U,  U },//1
+  {  U, -U, -U },//2
+  { -U, -U, -U },//3
+  { -U,  U,  U },//4
+  {  U,  U,  U },//5
+  {  U,  U, -U },//6
+  { -U,  U, -U },//7
 };
  
 struct surface s[6] = {// define the surfaces
@@ -246,13 +246,12 @@ void setup(void){
   sprite_surface[0].createSprite(surface00.width ,surface00.height);
   sprite_surface[0].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
   sprite_surface[0].setColor(lcd.color565(0,0,0));
-  sprite_surface[0].fillTriangle(0, 0, surface00.width-1, surface00.height-1, 0, surface00.height-1);
+  sprite_surface[0].fillTriangle(0, 0, surface00.width-1, 0, surface00.width-1, surface00.height-1);
 
   sprite_surface[1].createSprite(surface00.width ,surface00.height);
   sprite_surface[1].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
   sprite_surface[1].setColor(lcd.color565(0,0,0));
-  sprite_surface[1].fillTriangle(0, 0, surface00.width-1, 0, surface00.width-1, surface00.height-1);
-
+  sprite_surface[1].fillTriangle(0, 0, surface00.width-1, surface00.height-1, 0, surface00.height-1);
   
   lcd.startWrite();
   lcd.fillScreen(TFT_DARKGREY);
@@ -316,32 +315,32 @@ void loop(void)
   rotate_cube_quaternion(filter->q0, filter->q1, filter->q2, filter->q3);
 
   //描写する面の順番に並び替え
-//  int ss[6]={0,1,2,3,4,5};
-//  float sf[6]={0};
-//  for (int i = 0; i < 6; i++)
-//  {
-//    float wz = 0;
-//    for(int j=0;j<4;j++){
-//      wz += cubef2[s[i].p[j]].z;
-//    }
-//    sf[i] = wz;
-//  }
-//  //交換ソート
-//  for (int j = 5; j > 0; j--){
-//    for (int i = 0; i < j; i++)
-//    {
-//        if(sf[i] < sf[i+1])
-//        {
-//          float work = sf[i];
-//          sf[i] = sf[i+1];
-//          sf[i+1] = work;
-//          
-//          int iw = ss[i];
-//          ss[i] = ss[i+1];
-//          ss[i+1] = iw;
-//        }
-//    }
-//  }
+  int ss[6]={0,1,2,3,4,5};
+  float sf[6]={0};
+  for (int i = 0; i < 6; i++)
+  {
+    float wz = 0;
+    for(int j=0;j<4;j++){
+      wz += cubef2[s[i].p[j]].z;
+    }
+    sf[i] = wz;
+  }
+  //交換ソート
+  for (int j = 5; j > 0; j--){
+    for (int i = 0; i < j; i++)
+    {
+        if(sf[i] < sf[i+1])
+        {
+          float work = sf[i];
+          sf[i] = sf[i+1];
+          sf[i+1] = work;
+          
+          int iw = ss[i];
+          ss[i] = ss[i+1];
+          ss[i+1] = iw;
+        }
+    }
+  }
 
   flip = !flip;
   sprite[flip].clear();
@@ -389,40 +388,50 @@ void loop(void)
   //float x_zoom = (90-abs(pitch*180/PI))/90;
   //float y_zoom = (90-abs(roll*180/PI))/90;
 
-
+  for (int i = 3; i < 6; i++)
   {
-    int ii = 3; //front
-
-    Eigen::MatrixXf tp(3,3);
-    tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
-          cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
-            1,  1,  1;
+    if(ss[i]==3)
+    {
+      int ii = 3; //front
   
-    Eigen::MatrixXf fp(3,3);
-    fp << 0, surface00.width, surface00.width,
-          0,   0, surface00.height,
-          1,   1,   1;
-  
-    Eigen::MatrixXf H(3,3);
-
-    Haffine_from_points(fp,tp,H);
-
-    float matrix[6]={
-      H(0,0),H(0,1),H(0,2),
-      H(0,0),H(1,1),H(1,2)
-    };
-    //float surface_center_x = 0.0;
-    //float surface_center_y = 0.0;
+      Eigen::MatrixXf tp(3,3);
+      tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
+            cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
+              1,  1,  1;
     
-//    for(int i=0 ; i<4 ; i++){
-//      surface_center_x += cubef2[s[ii].p[i]].x;
-//      surface_center_y += cubef2[s[ii].p[i]].y;
-//      //Serial.printf("%f,%f,\r\n",cubef2[s[ii].p[i]].x, cubef2[s[ii].p[i]].y); 
-//    }
-    lcd.setCursor(0, 10);
-    print_mtxf(H);
-    sprite_surface[0].pushAffine(&lcd, matrix, 0);
-    //sprite_surface[0].pushRotateZoom(&lcd, (int)(surface_center_x/4.0), (int)(surface_center_y/4.0), -yaw*180/PI, x_zoom, y_zoom);
+      Eigen::MatrixXf fp(3,3);
+      fp << 0, 0, surface00.width,
+            0, surface00.height, surface00.height,
+            1,   1,   1;
+    
+      Eigen::MatrixXf H(3,3);
+      Haffine_from_points(fp,tp,H);
+  
+      float matrix[6]={
+        (float)H(0,0),(float)H(0,1),(float)H(0,2),
+        (float)H(1,0),(float)H(1,1),(float)H(1,2)
+      };
+
+//      float matrix[6]={
+//        1.0,0.0,0.0,
+//        0.0,1.0,0.0
+//      };
+  
+      //float surface_center_x = 0.0;
+      //float surface_center_y = 0.0;
+      
+  //    for(int i=0 ; i<4 ; i++){
+  //      surface_center_x += cubef2[s[ii].p[i]].x;
+  //      surface_center_y += cubef2[s[ii].p[i]].y;
+  //      //Serial.printf("%f,%f,\r\n",cubef2[s[ii].p[i]].x, cubef2[s[ii].p[i]].y); 
+  //    }
+      lcd.setCursor(160, 0);
+      //print_mtxf(H);
+      lcd.printf("(%f,%f,%f)\n",H(0,0),H(0,1),H(0,2));
+      lcd.printf("(%f,%f,%f)\n",H(1,0),H(1,1),H(1,2));
+      sprite_surface[0].pushAffine(&lcd, matrix, 0);
+      //sprite_surface[0].pushRotateZoom(&lcd, (int)(surface_center_x/4.0), (int)(surface_center_y/4.0), -yaw*180/PI, x_zoom, y_zoom);
+    }
   }
 }
 
