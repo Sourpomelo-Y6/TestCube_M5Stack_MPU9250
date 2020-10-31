@@ -393,24 +393,47 @@ void loop(void)
     if(ss[i]==3)
     {
       int ii = 3; //front
-  
-      Eigen::MatrixXf tp(3,3);
-      tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
-            cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
-              1,  1,  1;
+      {
+        Eigen::MatrixXf tp(3,3);
+        tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
+              cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
+                1,  1,  1;
+      
+        Eigen::MatrixXf fp(3,3);
+        fp << 0, 0, surface00.width,
+              0, surface00.height, surface00.height,
+              1,   1,   1;
+      
+        Eigen::MatrixXf H(3,3);
+        Haffine_from_points(fp,tp,H);
     
-      Eigen::MatrixXf fp(3,3);
-      fp << 0, 0, surface00.width,
-            0, surface00.height, surface00.height,
-            1,   1,   1;
+        float matrix[6]={
+          (float)H(0,0),(float)H(0,1),(float)H(0,2),
+          (float)H(1,0),(float)H(1,1),(float)H(1,2)
+        };
+        sprite_surface[0].pushAffine(&lcd, matrix, 0);
+      }
+
+      {
+        Eigen::MatrixXf tp(3,3);
+        tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[2]].x,cubef2[s[ii].p[3]].x,
+              cubef2[s[ii].p[0]].y,cubef2[s[ii].p[2]].y,cubef2[s[ii].p[3]].y,
+                1,  1,  1;
+      
+        Eigen::MatrixXf fp(3,3);
+        fp << 0, surface00.width, surface00.width,
+              0, surface00.height, 0,
+              1,   1,   1;
+      
+        Eigen::MatrixXf H(3,3);
+        Haffine_from_points(fp,tp,H);
     
-      Eigen::MatrixXf H(3,3);
-      Haffine_from_points(fp,tp,H);
-  
-      float matrix[6]={
-        (float)H(0,0),(float)H(0,1),(float)H(0,2),
-        (float)H(1,0),(float)H(1,1),(float)H(1,2)
-      };
+        float matrix[6]={
+          (float)H(0,0),(float)H(0,1),(float)H(0,2),
+          (float)H(1,0),(float)H(1,1),(float)H(1,2)
+        };
+        sprite_surface[1].pushAffine(&lcd, matrix, 0);
+      }
 
 //      float matrix[6]={
 //        1.0,0.0,0.0,
@@ -425,11 +448,11 @@ void loop(void)
   //      surface_center_y += cubef2[s[ii].p[i]].y;
   //      //Serial.printf("%f,%f,\r\n",cubef2[s[ii].p[i]].x, cubef2[s[ii].p[i]].y); 
   //    }
-      lcd.setCursor(160, 0);
+      //lcd.setCursor(160, 0);
       //print_mtxf(H);
-      lcd.printf("(%f,%f,%f)\n",H(0,0),H(0,1),H(0,2));
-      lcd.printf("(%f,%f,%f)\n",H(1,0),H(1,1),H(1,2));
-      sprite_surface[0].pushAffine(&lcd, matrix, 0);
+      //lcd.printf("(%f,%f,%f)\n",H(0,0),H(0,1),H(0,2));
+      //lcd.printf("(%f,%f,%f)\n",H(1,0),H(1,1),H(1,2));
+      //sprite_surface[0].pushAffine(&lcd, matrix, 0);
       //sprite_surface[0].pushRotateZoom(&lcd, (int)(surface_center_x/4.0), (int)(surface_center_y/4.0), -yaw*180/PI, x_zoom, y_zoom);
     }
   }
