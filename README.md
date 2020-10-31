@@ -1,7 +1,7 @@
 # TestCube_M5StackFire
 IMU-powered 3D Cube
 
-IMUで動かす3Dキューブ
+*IMUで動かす3Dキューブ*
 
 <!--[Sample](Sample.jpg)-->
 
@@ -18,21 +18,43 @@ https://macsbug.wordpress.com/2019/05/20/m5stickc-3d-color-cube/
 
 The reason why I did that is because it behaved strangely when I just adapted the IMU pitch and roll angle to the original source material.
 
-なぜそんなことをしたかというと、元ネタのソースにIMUのpitch,roll角を適応するだけだと、変な挙動をしたからである。
+*なぜそんなことをしたかというと、元ネタのソースにIMUのpitch,roll角を適応するだけだと、変な挙動をしたからである。*
 
 However, the real cause seems to be the point where the yaw angle is zeroed when turning a 3-dimensional angle into a 2-dimensional angle, so the yaw angle gradually drifts, which is frustrating, but I'm rotating it at a 3-dimensional angle.
 
-しかし、真の原因は3次元の角度を2次元の角度にする際にyaw角を0するところにあるようなので、だんだんyaw角がドリフトするのが不満だが三次元の角度で回転させている。
+*しかし、真の原因は3次元の角度を2次元の角度にする際にyaw角を0するところにあるようなので、だんだんyaw角がドリフトするのが不満だが三次元の角度で回転させている。*
 
 [PS] I've incorporated the reference code by Lovyan, which allows me to portray it at less than 100Hz (10ms), which is what I've set for the Madgwick filter. Thanks.
 
-[追記]Lovyan氏による参考コードを取り込んだことにより、Madgwickフィルタに設定している100Hz(10ms)以下で描写できるようになりました。ありがとうございます。
+*[追記]Lovyan氏による参考コードを取り込んだことにより、Madgwickフィルタに設定している100Hz(10ms)以下で描写できるようになりました。ありがとうございます。*
+
+##  Install libraries
+
+Clone the EigenArduino to Arduino/libraries.
+
+*EigenArduinoをArduino/librariesにclone。*
+
+Delete the Eigen folder in the EigenArduino folder.
+
+https://github.com/eigenteam/eigen-git-mirror.git
+Copy the Eigen folder in the master branch of the above url.
+
+*EigenArduinoフォルダの中のEigenフォルダを削除して、</br>
+https://github.com/eigenteam/eigen-git-mirror.git
+のmasterブランチのEigenフォルダをコピー。*
+
+
 
 ##  Necessary libraries
 
 LovyanGFX</br>
 https://github.com/lovyan03/LovyanGFX
 
+EigenArduino</br>
+https://github.com/vancegroup/EigenArduino
+
+Eigen</br>
+https://github.com/eigenteam/eigen-git-mirror.git
 
 ## Reference
 
@@ -45,6 +67,12 @@ https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/
 Reference code by Lovyan<br/>
 Lovyan氏による参考コード<br/>
 https://gist.github.com/lovyan03/a4281731f6f3219aab68f665f791b148
+
+Programming Computer Vision with Python<br/>
+https://www.oreilly.com/library/view/programming-computer-vision/9781449341916/
+
+実践コンピュータビジョン<br/>
+https://www.oreilly.co.jp/books/9784873116075/
 
 ## Translation 
 

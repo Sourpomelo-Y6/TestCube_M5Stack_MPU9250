@@ -305,18 +305,6 @@ void loop(void)
       offset_yaw   = filter->getYaw();
     }
 
-//    M5.IMU.getGyroData(&gyroX,&gyroY,&gyroZ);
-//    M5.IMU.getAccelData(&accX,&accY,&accZ);
-//
-//    filter->MadgwickAHRSupdateIMU(
-//      PI/180.0F*(gyroX - calb_gyroX), 
-//      PI/180.0F*(gyroY - calb_gyroY), 
-//      PI/180.0F*(gyroZ - calb_gyroZ),
-//      accX - calb_accX, 
-//      accY - calb_accY, 
-//      accZ - calb_accZ
-//      );
-
     pre_calc_time = millis();
   }
 
@@ -360,7 +348,7 @@ void loop(void)
   }
 
   flip = !flip;
-  //sprite[flip].clear();
+//  sprite[flip].clear();
 //  for (int i = 0; i < 8; i++)
 //  {
 //    sprite[flip].drawRect( (int)cubef2[i].x-2, (int)cubef2[i].y-2, 4, 4 , 0xF000);
@@ -492,7 +480,7 @@ void draw_side(int ii)
 
 bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, Eigen::MatrixXf& H)
 {
-  //とりあえず、3x3行列のみを対象にする
+  //とりあえず、3x3行列のみを対象にし、形状判断を行わない。
   //if fp.shape != tp.shape:
   //  raise RuntimeError('number of points do not match')
   
@@ -503,17 +491,9 @@ bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, E
   Eigen::MatrixXf wfp = fp(seq(0, last - 1), all);
   Eigen::VectorXf m = wfp.rowwise().mean();
   
-  //std::cout << "wfp:" << std::endl;
-  //print_mtxf(wfp);
-  //std::cout << "m:" << std::endl;
-  //print_mtxf(m);
-  
   //maxstd = max(std(fp[:2], axis=1)) + 1e-9
   Eigen::VectorXf std_m = (wfp.colwise() - m).array().pow(2).rowwise().mean();
-  //print_mtxf(std_m);
   double maxstd = sqrt(std_m.maxCoeff()) + 1e-9;
-  //lcd.setCursor(0, 30);
-  //lcd.print(maxstd);
   
   //C1 = diag([1/maxstd, 1/maxstd, 1])
   //C1[0][2] = -m[0]/maxstd
@@ -525,9 +505,6 @@ bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, E
   
   //fp_cond = dot(C1,fp)
   Eigen::MatrixXf fp_cond = C1 * fp;
-  
-  //lcd.setCursor(0, 30);
-  //print_mtxf(fp_cond);
   
   //# 対応点
   //m = mean(tp[:2], axis=1)
@@ -541,46 +518,27 @@ bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, E
   C2(0, 2) = -m_t(0) / maxstd;
   C2(1, 2) = -m_t(1) / maxstd;
   
-  //std::cout << "C1:" << std::endl;
-  //print_mtxf(C1);
-  //std::cout << "C2:" << std::endl;
-  //print_mtxf(C2);
-  
   //tp_cond = dot(C2,tp)
   Eigen::MatrixXf tp_cond = C2 * tp;
   
   Eigen::MatrixXf A(4, 3);
   A << fp_cond(seq(0, last - 1), all),
       tp_cond(seq(0, last - 1), all);
-  
-  //std::cout << "A:" <<std::endl;
-  //print_mtxf(A);
-  //print_mtxf(A.transpose());
+
   //U,S,V = linalg.svd(A.T)
   BDCSVD<MatrixXf> svd(A.transpose(), ComputeFullU | ComputeFullV);
   
   //# Hartley-Zisserman (第2版) p.130 に基づき行列B,Cを求める
   //tmp = V[:2].T
   Eigen::MatrixXf tmp = svd.matrixV();
-  
-  //std::cout << "tmp:" << std::endl;
-  //print_mtxf(tmp);
-  
   Eigen::MatrixXf wtmp = tmp(seq(0, 1), all);
   Eigen::MatrixXf w2tmp = wtmp.transpose();
   
-  //std::cout << "w2tmp:" << std::endl;
-  //print_mtxf(w2tmp);
-  
   //B = tmp[:2]
   Eigen::MatrixXf B = -tmp(seq(0, 1), seq(0, 1));
-  //std::cout << "B:" << std::endl;
-  //print_mtxf(B);
   
   //C = tmp[2:4]
   Eigen::MatrixXf C = -tmp(seq(2, 3), seq(0, 1));
-  //std::cout << "C:" << std::endl;
-  //print_mtxf(C);
   
   //tmp2 = concatenate((dot(C,linalg.pinv(B)),zeros((2,1))), axis=1)
   Eigen::MatrixXf w = B.completeOrthogonalDecomposition().pseudoInverse();
@@ -589,9 +547,6 @@ bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, E
   tmp2 << w(0, 0), w(0, 1), 0,
       w(1, 0), w(1, 1), 0;
   
-  
-  //std::cout << "tmp2:" << std::endl;
-  //print_mtxf(tmp2);
   //H = vstack((tmp2,[0,0,1]))
   Eigen::MatrixXf w2(1, 3);
   w2 << 0, 0, 1;
@@ -599,29 +554,12 @@ bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, E
   tH << tmp2,
       w2;
   
-  //std::cout << "tH:" << std::endl;
-  //print_mtxf(tH);
   //# 調整を元に戻す
   //H = dot(linalg.inv(C2),dot(H,C1))
   tH = tH * C1;
   H = C2.inverse() * tH;
-  
-  //std::cout << "H:" << std::endl;
-  //print_mtxf(H);
-  //H / H[2,2]
   H = H / H(2, 2);
   
-  //print_mtxf(fp_cond);
-  //print_mtxf(tp_cond);
-  //print_mtxf(C1); 
-  //print_mtxf(tmp);
-  //print_mtxf(B); 
-  //print_mtxf(C);
-  //print_mtxf(C2);
-  //print_mtxf(A);
-  //print_mtxf(tmp2);
-  //print_mtxf(tH);
-  //print_mtxf(H);
   return true;
 }
 
