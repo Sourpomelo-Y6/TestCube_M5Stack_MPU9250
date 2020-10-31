@@ -6,7 +6,13 @@ using namespace Eigen;
 #include <M5Stack.h>
 
 #include "gimp_image.h"
-#include "surface00.h"
+#include "surface_front.h"
+#include "surface01.h"
+#include "surface02.h"
+#include "surface03.h"
+#include "surface04.h"
+#include "surface05.h"
+
 
 #include "utility/MPU9250.h"
 MPU9250 IMU;
@@ -30,26 +36,27 @@ static LGFX_Sprite sprite_surface[6];
 //#pragma GCC optimize ("O3")
 struct point3df{ float x, y, z;};
 struct surface{ uint8_t p[4]; int16_t z;};
-#define U  135         // size of cube
+#define U  135         
+#define UD  50
  
 struct point3df cubef[8] ={ // cube edge length is 2*U
-  { -U, -U,  U },//0
-  {  U, -U,  U },//1
-  {  U, -U, -U },//2
-  { -U, -U, -U },//3
-  { -U,  U,  U },//4
-  {  U,  U,  U },//5
-  {  U,  U, -U },//6
-  { -U,  U, -U },//7
+  { -U, -U,  UD },//0
+  {  U, -U,  UD },//1
+  {  U, -U, -UD },//2-
+  { -U, -U, -UD },//3-
+  { -U,  U,  UD },//4
+  {  U,  U,  UD },//5
+  {  U,  U, -UD },//6-
+  { -U,  U, -UD },//7-
 };
  
 struct surface s[6] = {// define the surfaces
-  { {0, 3, 2, 1}, 0 }, // bottom0
+  { {2, 1, 0, 3}, 0 }, // bottom0
   { {7, 4, 5, 6}, 0 }, // top0
   { {4, 0, 1, 5}, 0 }, // back0
   { {3, 7, 6, 2}, 0 }, // front0
-  { {2, 6, 5, 1}, 0 }, // right1
-  { {0, 4, 7, 3}, 0 }, // left1
+  { {6, 5, 1, 2}, 0 }, // right1
+  { {3, 0, 4, 7}, 0 }, // left1
 };
  
 struct point3df cubef2[8];
@@ -243,16 +250,26 @@ void setup(void){
   //sprite[0].createSprite(ws,hs);
   //sprite[1].createSprite(ws,hs);
 
-  sprite_surface[0].createSprite(surface00.width ,surface00.height);
-  sprite_surface[0].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
+  sprite_surface[0].createSprite(surface_front.width ,surface_front.height);
+  sprite_surface[0].pushImage(  0, 0,surface_front.width ,surface_front.height , (lgfx:: rgb565_t*)surface_front.pixel_data);
   sprite_surface[0].setColor(lcd.color565(0,0,0));
-  sprite_surface[0].fillTriangle(0, 0, surface00.width-1, 0, surface00.width-1, surface00.height-1);
+  sprite_surface[0].fillTriangle(1, 0, surface_front.width-1, 0, surface_front.width-1, surface_front.height-2);
 
-  sprite_surface[1].createSprite(surface00.width ,surface00.height);
-  sprite_surface[1].pushImage(  0, 0,surface00.width ,surface00.height , (lgfx:: rgb565_t*)surface00.pixel_data);
+  sprite_surface[1].createSprite(surface_front.width ,surface_front.height);
+  sprite_surface[1].pushImage(  0, 0,surface_front.width ,surface_front.height , (lgfx:: rgb565_t*)surface_front.pixel_data);
   sprite_surface[1].setColor(lcd.color565(0,0,0));
-  sprite_surface[1].fillTriangle(0, 0, surface00.width-1, surface00.height-1, 0, surface00.height-1);
-  
+  sprite_surface[1].fillTriangle(0, 0, surface_front.width-1, surface_front.height-1, 0, surface_front.height-1);
+
+  sprite_surface[2].createSprite(surface01.width ,surface01.height);
+  sprite_surface[2].pushImage(  0, 0,surface01.width ,surface01.height , (lgfx:: rgb565_t*)surface01.pixel_data);
+  sprite_surface[2].setColor(lcd.color565(0,0,0));
+  sprite_surface[2].fillTriangle(1, 0, surface01.width-1, 0, surface01.width-1, surface01.height-2);
+
+  sprite_surface[3].createSprite(surface01.width ,surface01.height);
+  sprite_surface[3].pushImage(  0, 0,surface01.width ,surface01.height , (lgfx:: rgb565_t*)surface01.pixel_data);
+  sprite_surface[3].setColor(lcd.color565(0,0,0));
+  sprite_surface[3].fillTriangle(0, 0, surface01.width-1, surface01.height-1, 0, surface01.height-1);
+
   lcd.startWrite();
   lcd.fillScreen(TFT_DARKGREY);
 }
@@ -367,58 +384,110 @@ void loop(void)
 //  }
   
   int show_time = millis() - pre_show_time;
-  if(flip){
+  if(show_time > 100){
     lcd.fillRect( 0, 0, ws, hs   , 0);
     
     for (int i = 3; i < 6; i++)
     {
       int ii = ss[i];
-      {
-        Eigen::MatrixXf tp(3,3);
-        tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
-              cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
-                1,  1,  1;
-      
-        Eigen::MatrixXf fp(3,3);
-        fp << 0, 0, surface00.width,
-              0, surface00.height, surface00.height,
-              1,   1,   1;
-      
-        Eigen::MatrixXf H(3,3);
-        Haffine_from_points(fp,tp,H);
-    
-        float matrix[6]={
-          (float)H(0,0),(float)H(0,1),(float)H(0,2),
-          (float)H(1,0),(float)H(1,1),(float)H(1,2)
-        };
-        sprite_surface[0].pushAffine(&lcd, matrix, 0);
-      }
-
-      {
-        Eigen::MatrixXf tp(3,3);
-        tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[2]].x,cubef2[s[ii].p[3]].x,
-              cubef2[s[ii].p[0]].y,cubef2[s[ii].p[2]].y,cubef2[s[ii].p[3]].y,
-                1,  1,  1;
-      
-        Eigen::MatrixXf fp(3,3);
-        fp << 0, surface00.width, surface00.width,
-              0, surface00.height, 0,
-              1,   1,   1;
-      
-        Eigen::MatrixXf H(3,3);
-        Haffine_from_points(fp,tp,H);
-    
-        float matrix[6]={
-          (float)H(0,0),(float)H(0,1),(float)H(0,2),
-          (float)H(1,0),(float)H(1,1),(float)H(1,2)
-        };
-        sprite_surface[1].pushAffine(&lcd, matrix, 0);
-      }
+      if(ii==2 || ii==3)draw_front(ii);
+      else draw_side(ii);
     }
+    lcd.setCursor(160, 50);
+    lcd.printf("%5d",show_time);
+    pre_show_time = millis();
   }
-  lcd.setCursor(160, 50);
-  lcd.printf("%5d",show_time);
-  pre_show_time = millis();
+  
+}
+
+void draw_front(int ii)
+{
+ {
+    Eigen::MatrixXf tp(3,3);
+    tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
+          cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
+            1,  1,  1;
+  
+    Eigen::MatrixXf fp(3,3);
+    fp << 0, 0, surface_front.width,
+          0, surface_front.height, surface_front.height,
+          1,   1,   1;
+  
+    Eigen::MatrixXf H(3,3);
+    Haffine_from_points(fp,tp,H);
+  
+    float matrix[6]={
+      (float)H(0,0),(float)H(0,1),(float)H(0,2),
+      (float)H(1,0),(float)H(1,1),(float)H(1,2)
+    };
+    sprite_surface[0].pushAffine(&lcd, matrix, 0);
+  }
+
+  {
+    Eigen::MatrixXf tp(3,3);
+    tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[2]].x,cubef2[s[ii].p[3]].x,
+          cubef2[s[ii].p[0]].y,cubef2[s[ii].p[2]].y,cubef2[s[ii].p[3]].y,
+            1,  1,  1;
+  
+    Eigen::MatrixXf fp(3,3);
+    fp << 0, surface_front.width, surface_front.width,
+          0, surface_front.height, 0,
+          1,   1,   1;
+  
+    Eigen::MatrixXf H(3,3);
+    Haffine_from_points(fp,tp,H);
+  
+    float matrix[6]={
+      (float)H(0,0),(float)H(0,1),(float)H(0,2),
+      (float)H(1,0),(float)H(1,1),(float)H(1,2)
+    };
+    sprite_surface[1].pushAffine(&lcd, matrix, 0);
+  }  
+}
+
+void draw_side(int ii)
+{
+ {
+    Eigen::MatrixXf tp(3,3);
+    tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[1]].x,cubef2[s[ii].p[2]].x,
+          cubef2[s[ii].p[0]].y,cubef2[s[ii].p[1]].y,cubef2[s[ii].p[2]].y,
+            1,  1,  1;
+  
+    Eigen::MatrixXf fp(3,3);
+    fp << 0, 0, surface01.width,
+          0, surface01.height, surface01.height,
+          1,   1,   1;
+  
+    Eigen::MatrixXf H(3,3);
+    Haffine_from_points(fp,tp,H);
+  
+    float matrix[6]={
+      (float)H(0,0),(float)H(0,1),(float)H(0,2),
+      (float)H(1,0),(float)H(1,1),(float)H(1,2)
+    };
+    sprite_surface[2].pushAffine(&lcd, matrix, 0);
+  }
+
+  {
+    Eigen::MatrixXf tp(3,3);
+    tp << cubef2[s[ii].p[0]].x,cubef2[s[ii].p[2]].x,cubef2[s[ii].p[3]].x,
+          cubef2[s[ii].p[0]].y,cubef2[s[ii].p[2]].y,cubef2[s[ii].p[3]].y,
+            1,  1,  1;
+  
+    Eigen::MatrixXf fp(3,3);
+    fp << 0, surface01.width, surface01.width,
+          0, surface01.height, 0,
+          1,   1,   1;
+  
+    Eigen::MatrixXf H(3,3);
+    Haffine_from_points(fp,tp,H);
+  
+    float matrix[6]={
+      (float)H(0,0),(float)H(0,1),(float)H(0,2),
+      (float)H(1,0),(float)H(1,1),(float)H(1,2)
+    };
+    sprite_surface[3].pushAffine(&lcd, matrix, 0);
+  }  
 }
 
 bool Haffine_from_points(const Eigen::MatrixXf& fp, const Eigen::MatrixXf& tp, Eigen::MatrixXf& H)
