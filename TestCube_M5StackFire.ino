@@ -30,7 +30,7 @@ Preferences preferences;
 Madgwick *filter = new Madgwick();
 
 static LGFX lcd;
-//static LGFX_Sprite sprite[2];
+static LGFX_Sprite sprite[2];
 static LGFX_Sprite sprite_surface[6];
 
 //#pragma GCC optimize ("O3")
@@ -247,8 +247,8 @@ void setup(void){
   ws = 160;
   hs = 160;
 
-  //sprite[0].createSprite(ws,hs);
-  //sprite[1].createSprite(ws,hs);
+  sprite[0].createSprite(ws,hs);
+  sprite[1].createSprite(ws,hs);
 
   sprite_surface[0].createSprite(surface_front.width ,surface_front.height);
   sprite_surface[0].pushImage(  0, 0,surface_front.width ,surface_front.height , (lgfx:: rgb565_t*)surface_front.pixel_data);
@@ -348,7 +348,7 @@ void loop(void)
   }
 
   flip = !flip;
-//  sprite[flip].clear();
+  sprite[flip].clear();
 //  for (int i = 0; i < 8; i++)
 //  {
 //    sprite[flip].drawRect( (int)cubef2[i].x-2, (int)cubef2[i].y-2, 4, 4 , 0xF000);
@@ -372,23 +372,26 @@ void loop(void)
 //  }
   
   int show_time = millis() - pre_show_time;
-  if(show_time > 100){
-    lcd.fillRect( 0, 0, ws, hs   , 0);
+  //if(show_time > 100)
+  {
+    //lcd.fillRect( 0, 0, ws, hs   , 0);
     
     for (int i = 3; i < 6; i++)
     {
       int ii = ss[i];
-      if(ii==2 || ii==3)draw_front(ii);
-      else draw_side(ii);
+      if(ii==2 || ii==3)draw_front(ii,flip);
+      else draw_side(ii,flip);
     }
-    lcd.setCursor(160, 50);
-    lcd.printf("%5d",show_time);
-    pre_show_time = millis();
   }
   
+  lcd.setCursor(160, 50);
+  lcd.printf("%5d",show_time);
+  pre_show_time = millis();
+
+  sprite[flip].pushSprite(&lcd, 0, 0);
 }
 
-void draw_front(int ii)
+void draw_front(int ii, bool flip)
 {
  {
     Eigen::MatrixXf tp(3,3);
@@ -408,7 +411,7 @@ void draw_front(int ii)
       (float)H(0,0),(float)H(0,1),(float)H(0,2),
       (float)H(1,0),(float)H(1,1),(float)H(1,2)
     };
-    sprite_surface[0].pushAffine(&lcd, matrix, 0);
+    sprite_surface[0].pushAffine(&sprite[flip], matrix, 0);
   }
 
   {
@@ -429,11 +432,11 @@ void draw_front(int ii)
       (float)H(0,0),(float)H(0,1),(float)H(0,2),
       (float)H(1,0),(float)H(1,1),(float)H(1,2)
     };
-    sprite_surface[1].pushAffine(&lcd, matrix, 0);
+    sprite_surface[1].pushAffine(&sprite[flip], matrix, 0);
   }  
 }
 
-void draw_side(int ii)
+void draw_side(int ii, bool flip)
 {
  {
     Eigen::MatrixXf tp(3,3);
@@ -453,7 +456,7 @@ void draw_side(int ii)
       (float)H(0,0),(float)H(0,1),(float)H(0,2),
       (float)H(1,0),(float)H(1,1),(float)H(1,2)
     };
-    sprite_surface[2].pushAffine(&lcd, matrix, 0);
+    sprite_surface[2].pushAffine(&sprite[flip], matrix, 0);
   }
 
   {
@@ -474,7 +477,7 @@ void draw_side(int ii)
       (float)H(0,0),(float)H(0,1),(float)H(0,2),
       (float)H(1,0),(float)H(1,1),(float)H(1,2)
     };
-    sprite_surface[3].pushAffine(&lcd, matrix, 0);
+    sprite_surface[3].pushAffine(&sprite[flip], matrix, 0);
   }  
 }
 
